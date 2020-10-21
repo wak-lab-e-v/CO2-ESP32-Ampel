@@ -12,5 +12,5 @@ Der SCD30 ist über GPIO22 I2C SCL und GPIO 21 I2C SDA verbunden.
 * In das Verzeichnis ~/Arduino/hardware/espressif/esp32/tools wechseln
 * python get.py oder get.exe ausführen
 
-## Stetch auf den ESP laden
+## Sketch auf den ESP laden
 * Beim ersten Upload kann es sein, dass man die *Boot* Taste gedrückt halten muss.
