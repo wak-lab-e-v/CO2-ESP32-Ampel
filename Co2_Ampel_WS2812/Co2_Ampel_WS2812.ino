@@ -14,6 +14,11 @@
 #include <Wire.h>
 #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
 #include "SparkFun_SCD30_Arduino_Library.h" //Click here to get the library: http://librarymanager/All#SparkFun_SCD30
+#include "Freenove_WS2812_Lib_for_ESP32.h"
+
+#define LEDS_COUNT  8
+#define LEDS_PIN  12
+#define CHANNEL   0
 
 const uint32_t SERIAL_SPEED = 115200;  ///< Set the baud rate for Serial I/O
 unsigned long messurementCounter = 0;
@@ -21,6 +26,7 @@ int32_t SCD30_Co2, SCD30_Humidity, SCD30_Temperature;
 int32_t BME680_Temperature, BME680_Humidity, BME680_Pressure, BME680_Gas;  // BME readings
 float temp_altitude;
 
+Freenove_ESP32_WS2812 ledsOut = Freenove_ESP32_WS2812(LEDS_COUNT, LEDS_PIN, CHANNEL, TYPE_GRB);
 SCD30 SCD30_AirSensor;
 BME680_Class BME680; 
 
@@ -46,6 +52,7 @@ void setup()
 {
   Serial.begin(SERIAL_SPEED);
   Serial.println("CO2 AMPEL with ESP32 + BME680 + SCD30");
+  ledsOut.begin();
   Wire.begin();
 
 
@@ -126,6 +133,14 @@ void loop()
   Serial.print("BME680: AirQuality:");
   sprintf(buf, "%4d.%02d\n", (int16_t)(BME680_Gas / 100), (uint8_t)(BME680_Gas % 100));  // Resistance milliohms
   Serial.println(buf);
+
+  for (int j = 0; j < 255; j += 2) {
+    for (int i = 0; i < LEDS_COUNT; i++) {
+      ledsOut.setLedColorData(i, ledsOut.Wheel((i * 256 / LEDS_COUNT + j) & 255));
+    }
+    ledsOut.show();
+    delay(5);
+  }  
   
   delay(5000);
 }
