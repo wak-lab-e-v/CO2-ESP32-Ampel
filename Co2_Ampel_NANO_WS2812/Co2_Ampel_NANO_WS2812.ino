@@ -40,6 +40,7 @@ NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 RgbColor red(colorSaturation, 0, 0);
 RgbColor green(0, colorSaturation, 0);
 RgbColor blue(0, 0, colorSaturation);
+RgbColor orange(colorSaturation, colorSaturation*165/255, 0);
 RgbColor white(colorSaturation);
 RgbColor black(0);
 
@@ -50,6 +51,7 @@ HslColor hslWhite(white);
 HslColor hslBlack(black);
 
 HslColor fHSL;
+RgbColor fRGB;
 float    Ampel;
 
   
@@ -114,6 +116,8 @@ void setup()
     BME680.setGas(320, 150);  // 320�c for 150 milliseconds
     delay(2000);
   #endif
+
+  fRGB = green;
 }
 
 void loop()
@@ -181,9 +185,16 @@ void loop()
   
   for (int j = 0; j < 255; j += 2) {
     for (int i = 0; i < PixelCount; i++) {
-      fHSL = HslColor(Ampel, 1, 0.1);
-      strip.SetPixelColor(i, RgbColor(fHSL));
-      //ledsOut.setLedColorData(i, ledsOut.Wheel((i * 256 / LEDS_COUNT + j) & 255));
+      // Neopixel:
+      //fHSL = HslColor(Ampel, 1, 0.1);
+      //strip.SetPixelColor(i, RgbColor(fHSL));
+      if (SCD30_Co2 > 1500)
+        fRGB = red;
+      else if (((SCD30_Co2 > 1000) && (fRGB == green)) || ((SCD30_Co2 < 1000) && (fRGB == red)))
+        fRGB = orange; 
+      else if (SCD30_Co2 < 800) 
+        fRGB = green; 
+      strip.SetPixelColor(i, fRGB);
     }
      strip.Show();
     delay(5);
