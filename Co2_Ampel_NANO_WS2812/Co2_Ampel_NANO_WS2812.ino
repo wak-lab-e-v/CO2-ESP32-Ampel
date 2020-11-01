@@ -188,11 +188,11 @@ void loop()
       // Neopixel:
       //fHSL = HslColor(Ampel, 1, 0.1);
       //strip.SetPixelColor(i, RgbColor(fHSL));
-      if (SCD30_Co2 > 1500)
+      if (SCD30_Co2 > 2000)
         fRGB = red;
-      else if (((SCD30_Co2 > 1000) && (fRGB == green)) || ((SCD30_Co2 < 1000) && (fRGB == red)))
+      else if (((SCD30_Co2 > 1500) && (fRGB == green)) || ((SCD30_Co2 < 1500) && (fRGB == red)))
         fRGB = orange; 
-      else if (SCD30_Co2 < 800) 
+      else if (SCD30_Co2 < 1000) 
         fRGB = green; 
       strip.SetPixelColor(i, fRGB);
     }
