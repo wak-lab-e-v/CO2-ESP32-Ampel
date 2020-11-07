@@ -7,6 +7,7 @@
   Open Serial Monitor at 115200 baud.
 */
 // #define BME680
+ #define U8DISPLAY
 
  // BME680 Air Quality: https://randomnerdtutorials.com/esp32-bme680-sensor-arduino/
  
@@ -17,10 +18,16 @@
 #ifdef BME680
   #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
 #endif
+#ifdef U8DISPLAY
+  #include <U8g2lib.h>
+#endif
 const uint16_t PixelCount = 7; // this example assumes 4 pixels, making it smaller will cause a failure
 const uint8_t PixelPin = 2;  // make sure to set this to the correct pin, ignored for Esp8266
 
-#define colorSaturation 128
+#define colorSaturation 32
+#define RotSchwelle 2000
+#define GruenSchwelle 1000
+#define OrangeSchwelle  ((RotSchwelle-GruenSchwelle)/2+GruenSchwelle)
 
 
 const uint32_t SERIAL_SPEED = 115200;  ///< Set the baud rate for Serial I/O
@@ -29,7 +36,11 @@ int32_t SCD30_Co2, SCD30_Humidity, SCD30_Temperature;
 #ifdef BME680
   int32_t BME680_Temperature, BME680_Humidity, BME680_Pressure, BME680_Gas;  // BME readings
 #endif
+#ifdef U8DISPLAY
+  U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ SCL, /* data=*/ SDA);
+#endif
 float temp_altitude;
+int ErrorCountdown;
 
 
 
@@ -77,7 +88,62 @@ float altitude(const int32_t press, const float seaLevel) {
 }  // of method altitude()
 #endif
 
+#ifdef U8DISPLAY
+void HandleDisplay()
+{
+  u8g2.firstPage();
+  do {
+  draw();
+  } while (u8g2.nextPage());
+  delay(50);
+}
 
+void draw(void)
+{
+  char oledTxt[25] = "";
+  
+  u8g2.setFont(u8g_font_helvR08); // font change – helvB14
+  
+  u8g2.drawStr(1, 10, "CO2 ppm");
+  snprintf (oledTxt, 25, "%d" , SCD30_Co2);
+  u8g2.drawStr(63, 10, oledTxt);
+  //u8g2.setFont(u8g_font_unifont); // font change – standard
+  u8g2.drawStr(1, 21, "Feuchte");
+  snprintf (oledTxt, 25, "%d %%" , SCD30_Humidity);
+  u8g2.drawStr(63, 21, oledTxt);
+  u8g2.drawStr(1, 32, "Temperatur");
+  snprintf (oledTxt, 25, "%d C" , SCD30_Temperature);
+  u8g2.drawStr(63, 32, oledTxt);
+
+  
+  u8g2.drawCircle (110, 15, 15); // contour
+  u8g2.drawCircle (105, 14, 4); // left eye
+  u8g2.drawCircle (115, 14, 4); // right eye
+  if (SCD30_Co2 > RotSchwelle)
+  {
+    //u8g2.drawPixel (103,25); // mouth
+    //u8g2.drawPixel (118,25); // mouth
+    u8g2.drawPixel (104,24); // mouth
+    u8g2.drawPixel (117,24); // mouth
+    u8g2.drawPixel (105,23); // mouth
+    u8g2.drawPixel (116,23); // mouth
+    u8g2.drawLine (106, 22, 115,22); // mouth
+    
+  } else if (SCD30_Co2 < GruenSchwelle)
+  {
+    u8g2.drawPixel (103,22); // mouth
+    u8g2.drawPixel (118,22); // mouth
+    u8g2.drawPixel (104,23); // mouth
+    u8g2.drawPixel (117,23); // mouth
+    u8g2.drawPixel (105,24); // mouth
+    u8g2.drawPixel (116,24); // mouth
+    u8g2.drawLine (106, 25, 115,25); // mouth
+  } else // gelb
+  {
+    u8g2.drawLine (103, 23, 118,23); // mouth
+  }
+}
+#endif
 
 void setup()
 {
@@ -87,6 +153,12 @@ void setup()
   // this resets all the neopixels to an off state
   strip.Begin();
   strip.Show();
+
+  #ifdef U8DISPLAY
+    u8g2.begin();
+    u8g2.setFont(u8g_font_unifont);
+    u8g2.setColorIndex(1); // display draws with pixel on  
+  #endif
   
   Wire.begin();
 
@@ -118,6 +190,8 @@ void setup()
   #endif
 
   fRGB = green;
+
+  
 }
 
 void loop()
@@ -130,6 +204,8 @@ void loop()
   
   if (SCD30_AirSensor.dataAvailable())
   {
+
+    
     SCD30_Co2 = SCD30_AirSensor.getCO2();
     SCD30_Temperature = SCD30_AirSensor.getTemperature();
     SCD30_Humidity = SCD30_AirSensor.getHumidity();
@@ -142,10 +218,19 @@ void loop()
 
     Serial.print("SCD30: Humidity(%): ");
     Serial.println(SCD30_Humidity, 1);
+    ErrorCountdown = 5;
+    delay(1000);
+    #ifdef U8DISPLAY
+    HandleDisplay(); 
+    #endif
+    
   }
   else
+  {
     Serial.println("SCD30 w/o data..");  //The SCD30 has data ready every two seconds
-    
+    if (ErrorCountdown) ErrorCountdown--;
+    else SCD30_Co2 = -1;
+  } 
 
   #ifdef BME680
     static char     buf[16];                        // sprintf text buffer
@@ -177,9 +262,9 @@ void loop()
     Serial.println(buf);
   #endif 
 
-  Ampel = 0.33- (SCD30_Co2 - 1000) / 3300.0;
-  if (Ampel > 0.33) Ampel = 0.33;
-  if (Ampel < 0) Ampel = 0;
+ // Ampel = 0.33- (SCD30_Co2 - 1000) / 3300.0;
+ // if (Ampel > 0.33) Ampel = 0.33;
+ // if (Ampel < 0) Ampel = 0;
   
 
   
@@ -188,11 +273,13 @@ void loop()
       // Neopixel:
       //fHSL = HslColor(Ampel, 1, 0.1);
       //strip.SetPixelColor(i, RgbColor(fHSL));
-      if (SCD30_Co2 > 2000)
+      if (SCD30_Co2 > RotSchwelle)
         fRGB = red;
-      else if (((SCD30_Co2 > 1500) && (fRGB == green)) || ((SCD30_Co2 < 1500) && (fRGB == red)))
+      else if (((SCD30_Co2 > OrangeSchwelle) && (fRGB == green)) || ((SCD30_Co2 < OrangeSchwelle) && (fRGB == red)))
         fRGB = orange; 
-      else if (SCD30_Co2 < 1000) 
+      else if (SCD30_Co2 < 200) 
+        fRGB = red;  // Fehler
+      else if (SCD30_Co2 < GruenSchwelle) 
         fRGB = green; 
       strip.SetPixelColor(i, fRGB);
     }
@@ -210,6 +297,6 @@ void loop()
     // if the NeoPixels are anything else, the following line will give an error
     //strip.SetPixelColor(3, RgbwColor(colorSaturation));
    
-  
-  delay(2000);
+
+  delay(1000);
 }
