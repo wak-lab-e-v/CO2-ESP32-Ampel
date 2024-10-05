@@ -8,22 +8,24 @@
 */
 // #define BME680
  #define U8DISPLAY
+ #define NEOPIXELS
 
  // BME680 Air Quality: https://randomnerdtutorials.com/esp32-bme680-sensor-arduino/
  
  
 #include <Wire.h>
 #include "SparkFun_SCD30_Arduino_Library.h" //Click here to get the library: http://librarymanager/All#SparkFun_SCD30
-#include <NeoPixelBus.h>
 #ifdef BME680
   #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
 #endif
 #ifdef U8DISPLAY
   #include <U8g2lib.h>
 #endif
-const uint16_t PixelCount = 7; // this example assumes 4 pixels, making it smaller will cause a failure
-const uint8_t PixelPin = 2;  // make sure to set this to the correct pin, ignored for Esp8266
-
+#ifdef NEOPIXELS
+  #include <NeoPixelBus.h>
+  const uint16_t PixelCount = 7; // this example assumes 4 pixels, making it smaller will cause a failure
+  const uint8_t PixelPin = 2;  // make sure to set this to the correct pin, ignored for Esp8266
+#endif  
 #define colorSaturation 32
 #define RotSchwelle 2000
 #define GruenSchwelle 1000
@@ -42,29 +44,29 @@ int32_t SCD30_Co2, SCD30_Humidity, SCD30_Temperature;
 float temp_altitude;
 int ErrorCountdown;
 
-
-
 SCD30 SCD30_AirSensor;
-NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
+#ifdef NEOPIXELS
+  NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
-RgbColor red(colorSaturation, 0, 0);
-RgbColor green(0, colorSaturation, 0);
-RgbColor blue(0, 0, colorSaturation);
-RgbColor orange(colorSaturation, colorSaturation*165/255, 0);
-RgbColor white(colorSaturation);
-RgbColor black(0);
-
-HslColor hslRed(red);
-HslColor hslGreen(green);
-HslColor hslBlue(blue);
-HslColor hslWhite(white);
-HslColor hslBlack(black);
-
-HslColor fHSL;
-RgbColor fRGB;
-float    Ampel;
-
+  
+  RgbColor red(colorSaturation, 0, 0);
+  RgbColor green(0, colorSaturation, 0);
+  RgbColor blue(0, 0, colorSaturation);
+  RgbColor orange(colorSaturation, colorSaturation*165/255, 0);
+  RgbColor white(colorSaturation);
+  RgbColor black(0);
+  
+  HslColor hslRed(red);
+  HslColor hslGreen(green);
+  HslColor hslBlue(blue);
+  HslColor hslWhite(white);
+  HslColor hslBlack(black);
+  
+  HslColor fHSL;
+  RgbColor fRGB;
+  float    Ampel;
+#endif
   
 
 
@@ -89,70 +91,72 @@ float altitude(const int32_t press, const float seaLevel) {
 #endif
 
 #ifdef U8DISPLAY
-void HandleDisplay()
-{
-  u8g2.firstPage();
-  do {
-  draw();
-  } while (u8g2.nextPage());
-  delay(50);
-}
-
-void draw(void)
-{
-  char oledTxt[25] = "";
-  
-  u8g2.setFont(u8g_font_helvR08); // font change – helvB14
-  
-  u8g2.drawStr(1, 10, "CO2 ppm");
-  snprintf (oledTxt, 25, "%d" , SCD30_Co2);
-  u8g2.drawStr(63, 10, oledTxt);
-  //u8g2.setFont(u8g_font_unifont); // font change – standard
-  u8g2.drawStr(1, 21, "Feuchte");
-  snprintf (oledTxt, 25, "%d %%" , SCD30_Humidity);
-  u8g2.drawStr(63, 21, oledTxt);
-  u8g2.drawStr(1, 32, "Temperatur");
-  snprintf (oledTxt, 25, "%d C" , SCD30_Temperature);
-  u8g2.drawStr(63, 32, oledTxt);
-
-  
-  u8g2.drawCircle (110, 15, 15); // contour
-  u8g2.drawCircle (105, 14, 4); // left eye
-  u8g2.drawCircle (115, 14, 4); // right eye
-  if (SCD30_Co2 > RotSchwelle)
+  void HandleDisplay()
   {
-    //u8g2.drawPixel (103,25); // mouth
-    //u8g2.drawPixel (118,25); // mouth
-    u8g2.drawPixel (104,24); // mouth
-    u8g2.drawPixel (117,24); // mouth
-    u8g2.drawPixel (105,23); // mouth
-    u8g2.drawPixel (116,23); // mouth
-    u8g2.drawLine (106, 22, 115,22); // mouth
-    
-  } else if (SCD30_Co2 < GruenSchwelle)
-  {
-    u8g2.drawPixel (103,22); // mouth
-    u8g2.drawPixel (118,22); // mouth
-    u8g2.drawPixel (104,23); // mouth
-    u8g2.drawPixel (117,23); // mouth
-    u8g2.drawPixel (105,24); // mouth
-    u8g2.drawPixel (116,24); // mouth
-    u8g2.drawLine (106, 25, 115,25); // mouth
-  } else // gelb
-  {
-    u8g2.drawLine (103, 23, 118,23); // mouth
+    u8g2.firstPage();
+    do {
+    draw();
+    } while (u8g2.nextPage());
+    delay(50);
   }
-}
+  
+  void draw(void)
+  {
+    char oledTxt[25] = "";
+    
+    u8g2.setFont(u8g_font_helvR08); // font change – helvB14
+    
+    u8g2.drawStr(1, 10, "CO2 ppm");
+    snprintf (oledTxt, 25, "%d" , SCD30_Co2);
+    u8g2.drawStr(63, 10, oledTxt);
+    //u8g2.setFont(u8g_font_unifont); // font change – standard
+    u8g2.drawStr(1, 21, "Feuchte");
+    snprintf (oledTxt, 25, "%d %%" , SCD30_Humidity);
+    u8g2.drawStr(63, 21, oledTxt);
+    u8g2.drawStr(1, 32, "Temperatur");
+    snprintf (oledTxt, 25, "%d C" , SCD30_Temperature);
+    u8g2.drawStr(63, 32, oledTxt);
+  
+    
+    u8g2.drawCircle (110, 15, 15); // contour
+    u8g2.drawCircle (105, 14, 4); // left eye
+    u8g2.drawCircle (115, 14, 4); // right eye
+    if (SCD30_Co2 > RotSchwelle)
+    {
+      //u8g2.drawPixel (103,25); // mouth
+      //u8g2.drawPixel (118,25); // mouth
+      u8g2.drawPixel (104,24); // mouth
+      u8g2.drawPixel (117,24); // mouth
+      u8g2.drawPixel (105,23); // mouth
+      u8g2.drawPixel (116,23); // mouth
+      u8g2.drawLine (106, 22, 115,22); // mouth
+      
+    } else if (SCD30_Co2 < GruenSchwelle)
+    {
+      u8g2.drawPixel (103,22); // mouth
+      u8g2.drawPixel (118,22); // mouth
+      u8g2.drawPixel (104,23); // mouth
+      u8g2.drawPixel (117,23); // mouth
+      u8g2.drawPixel (105,24); // mouth
+      u8g2.drawPixel (116,24); // mouth
+      u8g2.drawLine (106, 25, 115,25); // mouth
+    } else // gelb
+    {
+      u8g2.drawLine (103, 23, 118,23); // mouth
+    }
+  }
 #endif
 
 void setup()
 {
   Serial.begin(SERIAL_SPEED);
   Serial.println("CO2 AMPEL with NANO + SCD30");
-  
-  // this resets all the neopixels to an off state
-  strip.Begin();
-  strip.Show();
+  #ifdef NEOPIXELS  
+    // this resets all the neopixels to an off state
+    strip.Begin();
+    strip.Show();
+    fRGB = green;
+  #endif
 
   #ifdef U8DISPLAY
     u8g2.begin();
@@ -188,8 +192,6 @@ void setup()
     BME680.setGas(320, 150);  // 320�c for 150 milliseconds
     delay(2000);
   #endif
-
-  fRGB = green;
 
   
 }
@@ -267,7 +269,7 @@ void loop()
  // if (Ampel < 0) Ampel = 0;
   
 
-  
+#ifdef NEOPIXELS  
   for (int j = 0; j < 255; j += 2) {
     for (int i = 0; i < PixelCount; i++) {
       // Neopixel:
@@ -296,7 +298,7 @@ void loop()
     // if the NeoPixels are rgbw types the following line will compile
     // if the NeoPixels are anything else, the following line will give an error
     //strip.SetPixelColor(3, RgbwColor(colorSaturation));
-   
+#endif  
 
   delay(1000);
 }
